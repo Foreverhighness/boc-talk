@@ -192,9 +192,7 @@ impl<T: Send + 'static> CownPtrs for Vec<CownPtr<T>> {
         Self: 'l;
 
     fn requests(&self) -> Vec<Request> {
-        self.iter()
-            .map(|x| Request::new(CownPtr::clone(x)))
-            .collect()
+        self.iter().map(|x| Request::new(CownPtr::clone(x))).collect()
     }
 
     fn get_mut<'l>(self) -> Self::CownRefs<'l> {
@@ -236,9 +234,7 @@ impl Request {
     /// `start_enqueue` can executed parallel, so we need shared ref on behavior
     /// but the self ref may be exclusive?
     fn start_enqueue(&self, behavior: &Behavior) {
-        let prev_req = self
-            .target
-            .last_swap((&raw const *self).cast_mut(), Ordering::Relaxed);
+        let prev_req = self.target.last_swap((&raw const *self).cast_mut(), Ordering::SeqCst);
 
         // SAFETY: `prev_req` must contains valid pointer.
         let Some(prev_req) = (unsafe { prev_req.as_ref() }) else {
@@ -247,33 +243,31 @@ impl Request {
             return;
         };
 
-        while !prev_req.scheduled.load(Ordering::Relaxed) {
+        while !prev_req.scheduled.load(Ordering::SeqCst) {
             hint::spin_loop();
         }
 
-        debug_assert!(prev_req.next.load(Ordering::Relaxed).is_null());
-        prev_req
-            .next
-            .store((&raw const *behavior).cast_mut(), Ordering::Relaxed);
+        debug_assert!(prev_req.next.load(Ordering::SeqCst).is_null());
+        prev_req.next.store((&raw const *behavior).cast_mut(), Ordering::SeqCst);
     }
 
     /// Finish the second phase of the 2PL enqueue operation.
     ///
     /// Sets the scheduled flag so that subsequent behaviors can continue the 2PL enqueue.
     fn finish_enqueue(&self) {
-        self.scheduled.store(true, Ordering::Relaxed);
+        self.scheduled.store(true, Ordering::SeqCst);
     }
 
     fn release(&self) {
-        let mut behavior = self.next.load(Ordering::Relaxed);
+        let mut behavior = self.next.load(Ordering::SeqCst);
         if behavior.is_null() {
             if self
                 .target
                 .last_compare_exchange(
                     (&raw const *self).cast_mut(),
                     ptr::null_mut(),
-                    Ordering::Relaxed,
-                    Ordering::Relaxed,
+                    Ordering::SeqCst,
+                    Ordering::SeqCst,
                 )
                 .is_ok()
             {
@@ -281,7 +275,7 @@ impl Request {
             }
 
             loop {
-                behavior = self.next.load(Ordering::Relaxed);
+                behavior = self.next.load(Ordering::SeqCst);
                 if !behavior.is_null() {
                     break;
                 }
@@ -293,7 +287,7 @@ impl Request {
         let behavior = unsafe { behavior.as_ref().unwrap() };
         behavior.resolve_one();
 
-        self.next.store(ptr::null_mut(), Ordering::Relaxed);
+        self.next.store(ptr::null_mut(), Ordering::SeqCst);
     }
 }
 
@@ -349,10 +343,10 @@ impl Behavior {
     }
 
     pub fn resolve_one(&self) {
-        if self.count.fetch_sub(1, Ordering::Relaxed) > 1 {
+        if self.count.fetch_sub(1, Ordering::SeqCst) > 1 {
             return;
         }
-        debug_assert_eq!(self.count.load(Ordering::Relaxed), 0);
+        debug_assert_eq!(self.count.load(Ordering::SeqCst), 0);
 
         // SAFETY: `self` is not null, and is valid
         unsafe { PinnedBehavior::from_inner(NonNull::from_ref(self)) }.run();

@@ -47,3 +47,5 @@ Behaviours are the unit of concurrent execution. They are spawned with a list of
 
 Behaviour-oriented concurrency (or BoC) is intended as the sole concurrency feature of an underlying programming language.
 [Behaviour-Oriented Concurrency](https://dl.acm.org/doi/10.1145/3622852)
+
+[C# implementation](https://github.com/microsoft/verona-rt/blob/main/docs/internal/concurrency/modelimpl/When.cs)

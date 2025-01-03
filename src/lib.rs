@@ -7,6 +7,9 @@ mod imp;
 #[cfg(not(any(feature = "rayon")))]
 use std::thread as runtime;
 
-pub use imp::*;
+pub use imp::{CownPtr, run_when};
 #[cfg(feature = "rayon")]
 use rayon as runtime;
+
+#[cfg(test)]
+mod tests;

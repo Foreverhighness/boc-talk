@@ -8,3 +8,7 @@ rayon = { version = "1.10.0", optional = true }
 
 [features]
 ref = []
+
+[dev-dependencies]
+crossbeam-channel = "0.5.14"
+rand = "0.8.5"

@@ -15,7 +15,7 @@ mod boc_fibonacci {
         } else {
             let prev1 = fibonacci_inner(n - 1, None);
             let prev2 = fibonacci_inner(n - 2, None);
-            when!(prev1, prev2; g1, g2; {
+            when!(prev1, prev2; |g1, g2| {
                 *g1 += *g2;
                 if let Some(sender) = sender.as_ref() {
                     sender.send(*g1).unwrap();
@@ -84,7 +84,7 @@ mod boc_banking {
             // FIXME: This clone and the clone in the lower `when!` seems stupid but is needed.
             let finish_sender = finish_sender.clone();
             let c_remaining = c_remaining.clone();
-            when!(c_src, c_dst; src, dst; {
+            when!(c_src, c_dst; |src, dst| {
                 // Transfer.
                 if amount <= *src {
                     *src -= amount;
@@ -96,7 +96,7 @@ mod boc_banking {
                 }
 
                 let finish_sender = finish_sender.clone();
-                when!(c_remaining; remaining; {
+                when!(c_remaining; |remaining| {
                     *remaining -= 1;
                     // Tell the main thread that all transactions have finished.
                     if *remaining == 0 {
@@ -200,7 +200,7 @@ mod boc_merge_sort {
             let boc_arr_clone = boc_arr.clone();
             let boc_finish_clone = boc_finish.clone();
             let finish_sender = finish_sender.clone();
-            when!(c_finished; finished; {
+            when!(c_finished; |finished| {
                 // Signal that the sorting of subarray for [i, i+1) is finished.
                 *finished = 1;
                 merge_sort_inner((n + i) / 2, 2, n, &boc_arr_clone, &boc_finish_clone, &finish_sender);
@@ -234,7 +234,7 @@ mod basic_test {
             let (send2, recv2) = bounded(1);
 
             runtime::spawn(move || {
-                when!(c_sent_t1; sent; {
+                when!(c_sent_t1; |sent| {
                     if *sent {
                         assert_eq!(1, msg_t1.load(Ordering::Relaxed));
                     } else {
@@ -245,7 +245,7 @@ mod basic_test {
                 });
             });
             runtime::spawn(move || {
-                when!(c_sent_t2; sent; {
+                when!(c_sent_t2; |sent| {
                     if *sent {
                         assert_eq!(1, msg_t2.load(Ordering::Relaxed));
                     } else {
@@ -278,26 +278,26 @@ mod basic_test {
             let send_t2 = send_t1.clone();
 
             runtime::spawn(move || {
-                when!(c_flag1_t1; flag1; *flag1 = true);
+                when!(c_flag1_t1; |flag1| *flag1 = true);
 
                 if msg_t1
                     .compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst)
                     .is_err()
                 {
-                    when!(c_flag2_t1; flag2; {
+                    when!(c_flag2_t1; |flag2| {
                         assert!(*flag2);
                         send_t1.send(()).unwrap();
                     });
                 }
             });
             runtime::spawn(move || {
-                when!(c_flag2_t2; flag2; *flag2 = true);
+                when!(c_flag2_t2; |flag2| *flag2 = true);
 
                 if msg_t2
                     .compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst)
                     .is_err()
                 {
-                    when!(c_flag1_t2; flag1; {
+                    when!(c_flag1_t2; |flag1| {
                         assert!(*flag1);
                         send_t2.send(()).unwrap();
                     });

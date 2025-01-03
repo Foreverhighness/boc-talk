@@ -455,7 +455,7 @@ macro_rules! tuple_list_mut {
 /// "When" block.
 #[macro_export]
 macro_rules! when {
-    ( $( $cs:ident ),* ; $( $gs:ident ),* ; $thunk:expr_2021 ) => {{
+    ( $( $cs:ident ),* ; | $( $gs:ident ),* | $thunk:expr_2021 ) => {{
         #[allow(unused_mut, reason = "macro expand")]
         run_when($crate::tuple_list!($($cs.clone()),*), move |$crate::tuple_list_mut!($($gs),*)| $thunk);
     }};
@@ -571,17 +571,17 @@ mod tests {
 
         let (finish_sender, finish_receiver) = bounded(0);
 
-        when!(c1, c2; g1, g2; {
+        when!(c1, c2; |g1, g2| {
             // c3, c2 are moved into this thunk. There's no such thing as auto-cloning move closure.
             *g1 += 1;
             *g2 += 1;
-            when!(c3, c2; g3, g2; {
+            when!(c3, c2; | g3, g2 | {
                 *g2 += 1;
                 *g3 = true;
             });
         });
 
-        when!(c1, c2_, c3_; g1, g2, g3; {
+        when!(c1, c2_, c3_; |g1, g2, g3| {
             assert_eq!(*g1, 1);
             assert_eq!(*g2, if *g3 { 2 } else { 1 });
             finish_sender.send(()).unwrap();
@@ -605,13 +605,13 @@ mod tests {
             // c3, c2 are moved into this thunk. There's no such thing as auto-cloning move closure.
             *x[0] += 1;
             *x[1] += 1;
-            when!(c3, c2; g3, g2; {
+            when!(c3, c2; |g3, g2| {
                 *g2 += 1;
                 *g3 = true;
             });
         });
 
-        when!(c1, c2_, c3_; g1, g2, g3; {
+        when!(c1, c2_, c3_; |g1, g2, g3| {
             assert_eq!(*g1, 1);
             assert_eq!(*g2, if *g3 { 2 } else { 1 });
             finish_sender.send(()).unwrap();
@@ -634,14 +634,14 @@ mod tests {
 
         let calc = || core::hint::black_box(1);
 
-        when!(c1; g1; {
+        when!(c1; |g1| {
             for _ in 0..core::hint::black_box(count) {
                 *g1 += core::hint::black_box(calc());
             }
             tx1.send(*g1).unwrap();
         });
 
-        when!(c2; g2; {
+        when!(c2; |g2| {
             for _ in 0..core::hint::black_box(count) {
                 *g2 += core::hint::black_box(calc());
             }

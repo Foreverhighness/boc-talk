@@ -434,7 +434,7 @@ macro_rules! tuple_list {
 /// "When" block.
 #[macro_export]
 macro_rules! when {
-        ( $( $cs:ident ),* ; $( $gs:ident ),* ; $thunk:expr_2021 ) => {{
+        ( $( $cs:ident ),* ; | $( $gs:ident ),* | $thunk:expr_2021 ) => {{
             run_when($crate::tuple_list!($($cs.clone()),*), move |$crate::tuple_list!($($gs),*)| $thunk);
         }};
     }

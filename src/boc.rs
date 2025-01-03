@@ -281,7 +281,7 @@ impl<T: ?Sized> ArcCown<T> {
 /// Cown trait, use `Arc<dyn CownTrait>` to hold data part.
 ///
 /// `last` method to access metadata
-trait CownTrait: Sync + 'static {
+trait CownTrait: Send + Sync + 'static {
     /// Register new Request on this cown
     fn last(&self) -> &Mutex<Option<Weak<Request>>>;
 
@@ -456,7 +456,7 @@ macro_rules! tuple_list_mut {
 #[macro_export]
 macro_rules! when {
     ( $( $cs:ident ),* ; $( $gs:ident ),* ; $thunk:expr_2021 ) => {{
-        #[expect(unused_mut, reason = "macro expand")]
+        #[allow(unused_mut, reason = "macro expand")]
         run_when($crate::tuple_list!($($cs.clone()),*), move |$crate::tuple_list_mut!($($gs),*)| $thunk);
     }};
 }
@@ -468,11 +468,6 @@ macro_rules! when {
 struct ResourceHolder {
     cown: Arc<dyn CownTrait>,
 }
-
-// SAFETY: We only use ResourceHolder to access Cown's metadata
-unsafe impl Sync for ResourceHolder {}
-// SAFETY: We only use ResourceHolder to access Cown's metadata
-unsafe impl Send for ResourceHolder {}
 
 impl ResourceHolder {
     fn new<T: Send + 'static>(resource: ArcCown<T>) -> Self {

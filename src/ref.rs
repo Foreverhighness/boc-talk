@@ -243,12 +243,12 @@ impl Request {
             return;
         };
 
+        debug_assert!(prev_req.next.load(Ordering::SeqCst).is_null());
+        prev_req.next.store((&raw const *behavior).cast_mut(), Ordering::SeqCst);
+
         while !prev_req.scheduled.load(Ordering::SeqCst) {
             hint::spin_loop();
         }
-
-        debug_assert!(prev_req.next.load(Ordering::SeqCst).is_null());
-        prev_req.next.store((&raw const *behavior).cast_mut(), Ordering::SeqCst);
     }
 
     /// Finish the second phase of the 2PL enqueue operation.

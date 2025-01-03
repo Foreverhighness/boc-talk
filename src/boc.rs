@@ -55,15 +55,14 @@ impl Behaviour {
     /// Performs two phase locking (2PL) over the enqueuing of the requests.
     /// This ensures that the overall effect of the enqueue is atomic.
     fn schedule(self: Arc<Self>) {
-        {
-            let requests = self.requests.lock().unwrap();
-            let requests = requests.as_ref().unwrap();
-            assert!(requests.is_sorted());
+        let requests_guard = self.requests.lock().unwrap();
+        let requests = requests_guard.as_ref().unwrap();
+        assert!(requests.is_sorted());
 
-            requests.iter().for_each(|req| req.start_enqueue(&self));
+        requests.iter().for_each(|req| req.start_enqueue(&self));
 
-            requests.iter().for_each(|req| req.finish_enqueue());
-        }
+        requests.iter().for_each(|req| req.finish_enqueue());
+        drop(requests_guard);
 
         self.resolve_one();
     }
@@ -87,7 +86,7 @@ impl Behaviour {
         );
         runtime::spawn(move || {
             routine();
-            requests.iter().for_each(|req| req.release());
+            requests.iter().for_each(Request::release);
         });
     }
 }
@@ -137,7 +136,7 @@ impl Request {
             let behaviour = Arc::clone(behaviour);
             move || {
                 *req.state.lock().unwrap() = ResourceState::Owned;
-                behaviour.resolve_one()
+                behaviour.resolve_one();
             }
         };
 
@@ -172,7 +171,7 @@ impl Request {
             .scheduled
             .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst);
 
-        assert_eq!(res, Ok(false))
+        assert_eq!(res, Ok(false));
     }
 
     /// Release the cown to the next behaviour.
@@ -182,8 +181,9 @@ impl Request {
     fn release(self: &Arc<Self>) {
         assert_eq!(*self.state.lock().unwrap(), ResourceState::Owned);
 
-        let last_request = self.resource.cown.last().lock().unwrap();
-        if let Some(callback) = self.callback.lock().unwrap().take() {
+        let mut last_request = self.resource.cown.last().lock().unwrap();
+        let callback = self.callback.lock().unwrap().take();
+        if let Some(callback) = callback {
             assert!(
                 !last_request
                     .as_ref()
@@ -200,7 +200,6 @@ impl Request {
                     .expect("release on not acquired cown")
                     .ptr_eq(&Arc::downgrade(self))
             );
-            let mut last_request = last_request;
 
             *last_request = None;
         }
@@ -236,7 +235,7 @@ type CownId = usize;
 
 /// Cown that wraps a value.
 ///
-/// The value should only be accessed inside a when() block.
+/// The value should only be accessed inside a `when()` block.
 struct Cown<T: ?Sized> {
     /// sort request
     id: CownId,
@@ -370,9 +369,7 @@ impl CownList for () {
         Vec::new()
     }
 
-    fn get_mut<'l>(self) -> Self::CownRefs<'l> {
-        ()
-    }
+    fn get_mut<'l>(self) -> Self::CownRefs<'l> {}
 }
 
 impl<T: Send + 'static, Others: CownList> CownList for (ArcCown<T>, Others) {
@@ -459,7 +456,7 @@ macro_rules! tuple_list_mut {
 #[macro_export]
 macro_rules! when {
     ( $( $cs:ident ),* ; $( $gs:ident ),* ; $thunk:expr_2021 ) => {{
-        #[allow(unused_mut, reason = "macro expand")]
+        #[expect(unused_mut, reason = "macro expand")]
         run_when($crate::tuple_list!($($cs.clone()),*), move |$crate::tuple_list_mut!($($gs),*)| $thunk);
     }};
 }
@@ -474,6 +471,7 @@ struct ResourceHolder {
 
 // SAFETY: We only use ResourceHolder to access Cown's metadata
 unsafe impl Sync for ResourceHolder {}
+// SAFETY: We only use ResourceHolder to access Cown's metadata
 unsafe impl Send for ResourceHolder {}
 
 impl ResourceHolder {

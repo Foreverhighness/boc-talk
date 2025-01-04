@@ -1,3 +1,5 @@
+#![allow(unused, reason = "syntax highlighting")]
+
 use core::fmt::Debug;
 use core::hint;
 use core::marker::PhantomData;
@@ -243,12 +245,12 @@ impl Request {
             return;
         };
 
-        debug_assert!(prev_req.next.load(Ordering::SeqCst).is_null());
-        prev_req.next.store((&raw const *behavior).cast_mut(), Ordering::SeqCst);
-
         while !prev_req.scheduled.load(Ordering::SeqCst) {
             hint::spin_loop();
         }
+
+        debug_assert!(prev_req.next.load(Ordering::SeqCst).is_null());
+        prev_req.next.store((&raw const *behavior).cast_mut(), Ordering::SeqCst);
     }
 
     /// Finish the second phase of the 2PL enqueue operation.
@@ -414,7 +416,7 @@ where
 }
 
 /// from <https://docs.rs/tuple_list/latest/tuple_list/>
-#[macro_export]
+#[cfg_attr(feature = "ref", macro_export)]
 macro_rules! tuple_list {
         () => ( () );
 
@@ -432,7 +434,7 @@ macro_rules! tuple_list {
     }
 
 /// "When" block.
-#[macro_export]
+#[cfg_attr(feature = "ref", macro_export)]
 macro_rules! when {
         ( $( $cs:ident ),* ; | $( $gs:ident ),* | $thunk:expr_2021 ) => {{
             run_when($crate::tuple_list!($($cs.clone()),*), move |$crate::tuple_list!($($gs),*)| $thunk);

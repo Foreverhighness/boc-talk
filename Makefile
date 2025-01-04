@@ -1,3 +1,6 @@
+test:
+	cargo nextest run --release --features ref
+
 clippy:
 	cargo clippy -- \
     -D clippy::all \
@@ -83,4 +86,4 @@ clippy:
     -D clippy::redundant_feature_names \
     -D clippy::wildcard_dependencies
 
-.PHONY: clippy
+.PHONY: clippy test

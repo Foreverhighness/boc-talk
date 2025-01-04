@@ -1,3 +1,4 @@
+use core::cell::UnsafeCell;
 use core::marker::PhantomData;
 use core::panic;
 use core::ptr::NonNull;
@@ -230,13 +231,10 @@ impl Eq for Request {}
 
 // region:Cown
 
-type InteriorMutCell<T> = core::cell::UnsafeCell<T>;
 type CownId = usize;
 
-/// Cown that wraps a value.
-///
-/// The value should only be accessed inside a `when()` block.
-struct Cown<T: ?Sized> {
+/// Metadata of Cown
+struct Metadata {
     /// sort request
     id: CownId,
 
@@ -248,9 +246,30 @@ struct Cown<T: ?Sized> {
 
     /// correctness checker
     borrow_at: Mutex<Option<&'static core::panic::Location<'static>>>,
+}
+
+/// Cown Id generator, use for debugging
+static ID_GEN: AtomicUsize = AtomicUsize::new(0);
+
+impl Metadata {
+    fn new() -> Self {
+        Self {
+            id: ID_GEN.fetch_add(1, Ordering::SeqCst),
+            last_request: Mutex::default(),
+            borrow_at: Mutex::default(),
+        }
+    }
+}
+
+/// Cown that wraps a value.
+///
+/// The value should only be accessed inside a `when()` block.
+struct Cown<T: ?Sized> {
+    /// Metadata of this Cown
+    meta: Metadata,
 
     /// The value of this Cown
-    resource: InteriorMutCell<T>,
+    resource: UnsafeCell<T>,
 }
 
 /// SAFETY: The value should access exclusively
@@ -260,7 +279,12 @@ unsafe impl<T: ?Sized + Send> Sync for Cown<T> {}
 impl<T: ?Sized> ArcCown<T> {
     #[track_caller]
     fn get_mut<'l>(self) -> RefMut<'l, T> {
-        let mut borrow_at = self.inner.borrow_at.try_lock().expect("logic error: lock contention");
+        let mut borrow_at = self
+            .inner
+            .meta
+            .borrow_at
+            .try_lock()
+            .expect("logic error: lock contention");
         if let Some(loc) = *borrow_at {
             panic!("logic error: borrow twice, prev access at {loc}")
         }
@@ -291,11 +315,11 @@ trait CownTrait: Send + Sync + 'static {
 
 impl<T: ?Sized + Send + 'static> CownTrait for Cown<T> {
     fn last(&self) -> &Mutex<Option<Weak<Request>>> {
-        &self.last_request
+        &self.meta.last_request
     }
 
     fn id(&self) -> CownId {
-        self.id
+        self.meta.id
     }
 }
 
@@ -304,8 +328,6 @@ pub struct ArcCown<T: ?Sized> {
     inner: Arc<Cown<T>>,
 }
 
-static ID_GEN: AtomicUsize = AtomicUsize::new(0);
-
 /// `ArcCown` is a wrapper around an `Arc` containing a `Cown` struct.
 /// It provides methods to create a new instance and to convert it into a dynamic trait object.
 impl<T> ArcCown<T> {
@@ -313,10 +335,8 @@ impl<T> ArcCown<T> {
     pub fn new(value: T) -> Self {
         Self {
             inner: Arc::new(Cown {
-                id: ID_GEN.fetch_add(1, Ordering::SeqCst),
-                last_request: Mutex::default(),
-                borrow_at: Mutex::default(),
-                resource: InteriorMutCell::new(value),
+                meta: Metadata::new(),
+                resource: UnsafeCell::new(value),
             }),
         }
     }
@@ -546,6 +566,7 @@ impl<T: ?Sized> Drop for RefMut<'_, T> {
         let mut borrow_at = self
             .holder
             .inner
+            .meta
             .borrow_at
             .try_lock()
             .expect("logic error: lock contention");

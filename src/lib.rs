@@ -4,6 +4,9 @@
 #[cfg_attr(not(feature = "ref"), path = "boc.rs")]
 mod imp;
 
+#[cfg(not(feature = "ref"))]
+mod r#ref;
+
 #[cfg(not(any(feature = "rayon")))]
 use std::thread as runtime;
 

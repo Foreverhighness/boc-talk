@@ -21,6 +21,7 @@
 // Page 2
 #polylux-slide[
   #show link: underline
+  #set underline(offset: 8pt)
   == Links
 
   #link("https://dl.acm.org/doi/10.1145/3622852")[Behaviour-Oriented Concurrency Paper]
@@ -118,7 +119,7 @@ $]
   ])
   - #alternatives-cases(("1, 2, 3,   5", "4"), case => [
     #set text(fill: teal) if case == 1
-    When: spawns a behaviour with a set of required cowns $->$ Spwan
+    When: spawns a behaviour with a set of required cowns $->$ Spawn
   ])
 
   $
@@ -127,4 +128,42 @@ $]
     "when(Cown<C>, Cown<D>; &mut C" xarrow(sym: -->, "transfer 100") "&mut D)" \
     "when(Cown<D>, Cown<A>; &mut D" xarrow(sym: -->, "transfer 100") "&mut A)" \
   $
+]
+
+// Page 6
+#polylux-slide[
+  == Abstraction
+
+  Example:
+
+  #sourcecode[```cpp
+    when (c1)     { /* b1 */ }
+    when (c3)     { /* b2 */ }
+    when (c1, c2) { /* b3 */ }
+    when (c1)     { /* b4 */ }
+    when (c2, c3) { /* b5 */ }
+    when (c3)     { /* b6 */ }
+  ```]
+]
+
+// Page 7
+#polylux-slide[
+  == Implementation with lock
+
+  - Additional count
+  - Scheduled flag
+]
+
+// Page 8
+#polylux-slide[
+  == Implementation without lock
+
+  - Behaviour, Request, and Cown all on heap
+  - Pin semantics
+]
+
+#polylux-slide[
+  #set align(horizon + center)
+  #set text(size: 30pt, font: "Avenir Next LT Pro")
+  = Thanks for watching!
 ]

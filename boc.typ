@@ -11,7 +11,7 @@
   #set align(horizon + center)
   = Behaviour-Oriented Concurrency
 
-  #link("https://github.com/Foreverhighness")[Hange Shen]
+  #link("https://github.com/Foreverhighness")[Hanji Shen]
 
   Jan 5, 2025
 
@@ -160,6 +160,14 @@ $]
 
   - Behaviour, Request, and Cown all on heap
   - Pin semantics
+]
+
+#polylux-slide[
+  == Related topic
+
+  - Actor
+  - Transaction
+  - Distribute Programming
 ]
 
 #polylux-slide[

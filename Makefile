@@ -1,5 +1,17 @@
+boc.pdf: boc.typ sections/example.pdf sections/scheduled.pdf
+	typst compile boc.typ boc-part.pdf
+	pdftk A=boc-part.pdf B=sections/example.pdf C=sections/scheduled.pdf cat A1-17 B A18 C A19-end output boc.pdf
+	rm -f boc-part.pdf
+
+pdf: boc.pdf
+
 test:
-	cargo nextest run --release --features ref
+	cargo nextest run --release
+
+clean:
+	cargo clean
+	rm -f boc.pdf
+	rm -f boc-part.pdf
 
 clippy:
 	cargo clippy -- \
@@ -86,4 +98,4 @@ clippy:
     -D clippy::redundant_feature_names \
     -D clippy::wildcard_dependencies
 
-.PHONY: clippy test
+.PHONY: clippy test clean pdf

@@ -72,8 +72,8 @@ $]
 
   - #alternatives-match((
     "1": [Isolation],
-    "2-3": [#text(fill: teal)[Isolation $->$ exclusive access (Mutex)]],
-    "4-7": [Isolation $->$ exclusive access (Mutex)],
+    "2-3": [#text(fill: teal)[Isolation $->$ exclusive access (Mutex Transaction)]],
+    "4-7": [Isolation $->$ exclusive access (Mutex Transaction)],
   ))
   - #alternatives-match((
     "1-3": [Parallelism],

@@ -86,9 +86,9 @@ $]
     "6-7": [Deadlock Freedom $->$ Deadlock avoidance (Sort)],
   ))
   - #alternatives-match((
-    "1-5": [Ordering],
+    "1-5": [Causal Ordering],
     "6": [#text(fill: teal)[Ordering $->$ DAG (Dependency Graph)]],
-    "7": [Ordering $->$ DAG (Dependency Graph)],
+    "7": [Causal Ordering $->$ DAG (Dependency Graph)],
   ))
 
   #alternatives-match((
